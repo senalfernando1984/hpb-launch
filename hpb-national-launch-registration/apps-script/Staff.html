@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      :root { --navy:#010A2B; --gold:#BF904A; --ivory:#F6F5F5; --grey:#E9E9E9; --graphite:#43434E; --error:#b3261e; }
+      * { box-sizing: border-box; }
+      body { margin:0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--ivory); color: var(--graphite); }
+      header { background: var(--navy); color:#fff; padding:16px 20px; }
+      header h1 { margin:0; font-size:1.1rem; }
+      header p { margin:4px 0 0; font-size:.8rem; color:#E1C493; }
+      main { max-width:760px; margin:0 auto; padding:20px 16px 60px; }
+      .search { display:flex; gap:8px; margin-bottom:16px; }
+      input, select, textarea { font:inherit; padding:12px; border:1px solid rgba(1,10,43,.15); border-radius:8px; width:100%; }
+      button { font:inherit; font-weight:600; padding:12px 18px; border-radius:8px; border:0; cursor:pointer; min-height:44px; }
+      .btn-primary { background: var(--navy); color:#fff; }
+      .btn-gold { background: var(--gold); color:#fff; }
+      .btn-quiet { background:#fff; border:1px solid var(--gold); color:var(--navy); }
+      .card { background:#fff; border:1px solid rgba(1,10,43,.1); border-radius:12px; padding:16px; margin-bottom:12px; }
+      .row { display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+      .name { color:var(--navy); font-weight:700; font-size:1.05rem; }
+      .meta { font-size:.85rem; }
+      .pill { display:inline-block; font-size:.7rem; font-weight:700; padding:3px 10px; border-radius:999px; text-transform:uppercase; letter-spacing:.05em; }
+      .pill.checked { background:#e6f4ea; color:#137333; }
+      .pill.pending { background:var(--grey); color:var(--graphite); }
+      .grid { display:grid; gap:10px; margin-top:12px; }
+      label.field { display:grid; gap:4px; font-size:.85rem; font-weight:600; color:var(--navy); }
+      .checks { display:flex; gap:16px; flex-wrap:wrap; }
+      .checks label { display:flex; gap:8px; align-items:center; font-weight:600; color:var(--navy); }
+      .checks input { width:auto; }
+      .status { min-height:1.4em; font-size:.9rem; margin-top:8px; }
+      .error { color:var(--error); }
+      .ok { color:#137333; }
+      .muted { color:var(--graphite); font-size:.85rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>HPB National Launch 2026 — Reception</h1>
+      <p>Signed in as <?= staffEmail ?></p>
+    </header>
+    <main>
+      <div class="search">
+        <input id="q" type="search" placeholder="Search reference, name, NIC/passport, mobile, seat…" autocomplete="off" />
+        <button class="btn-primary" onclick="search()">Search</button>
+      </div>
+      <p class="muted" id="hint">Enter a search term to find a registered participant.</p>
+      <div id="results"></div>
+    </main>
+
+    <script>
+      function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+      function search() {
+        var q = document.getElementById('q').value;
+        document.getElementById('hint').textContent = 'Searching…';
+        google.script.run.withSuccessHandler(render).withFailureHandler(function(e){
+          document.getElementById('hint').textContent = 'Error: ' + e.message;
+        }).staffSearch(q);
+      }
+
+      function render(list) {
+        var hint = document.getElementById('hint');
+        var container = document.getElementById('results');
+        container.innerHTML = '';
+        if (!list.length) { hint.textContent = 'No matching participant found.'; return; }
+        hint.textContent = list.length + ' result(s).';
+        list.forEach(function(p){
+          var checked = p.checkInStatus === 'Checked in';
+          var div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML =
+            '<div class="row"><span class="name">' + esc(p.fullName) + '</span>' +
+            '<span class="pill ' + (checked?'checked':'pending') + '">' + esc(p.checkInStatus) + '</span></div>' +
+            '<p class="meta">' + esc(p.reference) + ' · ' + esc(p.idType.toUpperCase()) + ' ' + esc(p.idMasked) + '</p>' +
+            '<p class="meta">' + esc(p.designation) + ' — ' + esc(p.institution) + '</p>' +
+            (checked ? '<p class="muted">Seat: ' + esc(p.seat || '—') + '</p>' :
+              '<div class="grid">' +
+                '<div class="checks">' +
+                  '<label><input type="checkbox" id="id_' + p.reference + '"> Identity document checked</label>' +
+                  '<label><input type="checkbox" id="sig_' + p.reference + '"> Signature obtained</label>' +
+                '</div>' +
+                '<label class="field">Seat number<input id="seat_' + p.reference + '" placeholder="e.g. A12"></label>' +
+                '<label class="field">Seating category<select id="cat_' + p.reference + '">' +
+                  '<option value="">—</option><option>General</option><option>Reserved</option><option>VIP</option><option>Media</option>' +
+                '</select></label>' +
+                '<label class="field">Signature method<select id="method_' + p.reference + '">' +
+                  '<option value="">—</option><option>Physical</option><option>Digital</option></select></label>' +
+                '<label class="field">Note (optional)<input id="note_' + p.reference + '"></label>' +
+                '<button class="btn-gold" onclick="checkin(\'' + p.reference + '\')">Mark arrived &amp; check in</button>' +
+                '<p class="status" id="st_' + p.reference + '"></p>' +
+              '</div>');
+          container.appendChild(div);
+        });
+      }
+
+      function checkin(ref) {
+        var st = document.getElementById('st_' + ref);
+        st.textContent = 'Saving…'; st.className = 'status';
+        var seat = document.getElementById('seat_' + ref).value;
+        var cat = document.getElementById('cat_' + ref).value;
+        var sig = document.getElementById('sig_' + ref).checked;
+        var method = document.getElementById('method_' + ref).value;
+        var idChecked = document.getElementById('id_' + ref).checked;
+        var note = document.getElementById('note_' + ref).value;
+        google.script.run.withSuccessHandler(function(){
+          st.textContent = 'Checked in.'; st.className = 'status ok';
+        }).withFailureHandler(function(e){
+          st.textContent = e.message; st.className = 'status error';
+        }).staffCheckIn(ref, seat, cat, sig, method, idChecked, note);
+      }
+
+      document.getElementById('q').addEventListener('keydown', function(e){ if (e.key === 'Enter') search(); });
+    </script>
+  </body>
+</html>

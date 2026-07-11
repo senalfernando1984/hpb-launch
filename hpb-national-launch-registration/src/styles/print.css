@@ -1,0 +1,12 @@
+@media print {
+  @page { size: A4 portrait; margin: 16mm; }
+  .site-header, .footer, .form-nav, .btn, .btn-row, .action-panel,
+  .progress, .progress__label, .skip-link, .alert--error { display: none !important; }
+  body { background: #fff; color: #000; }
+  .main { padding: 0; }
+  .card, .confirm-banner { break-inside: avoid; border: 0.5pt solid #666 !important; box-shadow: none !important; }
+  .confirm-banner { background: #fff !important; color: #000 !important; }
+  .confirm-banner h1, .confirm-banner__ref { color: #000c2b !important; }
+  .confirm-banner__ref { border-color: #000c2b !important; }
+  .qr-frame img { width: 60mm; height: 60mm; }
+}

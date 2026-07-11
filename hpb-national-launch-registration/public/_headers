@@ -1,0 +1,2 @@
+/.netlify/functions/*
+  Cache-Control: no-store
