@@ -8,19 +8,33 @@ An installable, responsive five-section baseline questionnaire based on the thre
 - `google/Code.gs`: Google Apps Script writing one row per respondent into a **private Google Sheet**, with column headers, duplicate suppression, and a script lock.
 - `netlify.toml`: publish and serverless functions configuration.
 
-## Google backend setup (must be completed by a Google account owner)
-1. Create or use the Google Sheet for responses. Keep the **sheet private** and owned by the investigator; **do not** set `Anyone with link` for the Sheet.
-2. Open [script.google.com](https://script.google.com), select **New project**, paste the contents of `google/Code.gs`.
-3. In **Project Settings → Script Properties**, add `SHEET_ID` = spreadsheet ID from the Sheet URL (not the whole URL); add `GOOGLE_SCRIPT_SECRET` = a long, random shared secret (at least 32 characters). Never commit this value to GitHub.
-4. In the Apps Script editor, run `setupHeaders()` once and authorize Google Sheets access, verifying `Responses` is created.
-5. Select **Deploy → New deployment → Web app**; **Execute as: Me**, **Who has access: Anyone**; deploy and copy the `/exec` URL. This URL is not a Sheet URL.
-6. In Netlify project **Environment variables**, add `GOOGLE_APPS_SCRIPT_URL` = Web App `/exec` URL and `GOOGLE_SCRIPT_SECRET` = exact same secret, with **Functions** scope. Redeploy after setting variables.
-7. Make a **test submission** using non-identifying dummy data, confirm the app says successful, verify a single row appeared in `Responses`, and delete the test row before field use.
+## Final launch steps (Google account owner must authorize these operations)
+The Google Sheet was created and pre-filled with 62 data columns. The **Launch Setup** tab contains a private 64-character backend token in B2. Never publicly share the Sheet; participants need only the Netlify web URL.
 
-## Netlify deployment
-- Fast path: upload project ZIP or connect a clean GitHub repository to Netlify. If using a GitHub branch of an existing repository, set **Base directory** to `sugar-smart-workplace` (if files are in that subfolder); the `netlify.toml` inside that folder specifies `public` and `netlify/functions`.
-- To deploy locally with CLI: `npx netlify-cli deploy --prod` from the project root, after connecting it to your Netlify site.
-- The site must be **public** with no visitor password / SSO. The Google Sheet itself remains private.
+### 1. Authorize the Google backend
+1. Open your response Sheet: `https://docs.google.com/spreadsheets/d/1OOVOYn94q0aWTCYgvgvJ7gOMK9RXcq5IdAAk7EQ9W54/edit`.
+2. Select **Extensions → Apps Script**. Delete the editor's sample code and paste the complete `google/Code.gs` from this repository (click **Raw** in GitHub to copy it). Save.
+3. In the Apps Script function selector, choose **setupHeaders**, press **Run**, and grant Google's permissions. This reads the existing private `Launch Setup!B2` secret and saves the settings in the Script Properties automatically. No manual Script Properties are necessary.
+4. Select **Deploy → New deployment → Web app**. Set **Execute as: Me** and **Who has access: Anyone**. Authorize if asked and click **Deploy**. Copy the `/exec` Web App URL. This is not the spreadsheet's URL.
+
+### 2. Connect the existing Netlify project to GitHub
+1. Open `https://app.netlify.com/projects/sugar-smart-workplace`, select the deploy/Git repository setup option, and connect your GitHub account if required.
+2. Choose the existing public repository `senalfernando1984/hpb-launch` and the `sugar-smart-workplace-2026` branch.
+3. Set the **Base directory** to `sugar-smart-workplace`; the `netlify.toml` in that directory sets the publish directory to `public` and the functions directory to `netlify/functions`.
+4. Do not create a new site; connect this repository to the Netlify project already created for you, and publish.
+
+### 3. Configure the two Netlify environment variables
+In **Project configuration → Environment variables**, set these for **Functions**:
+- `GOOGLE_APPS_SCRIPT_URL`: the deployed Apps Script **/exec** URL from step 1.
+- `GOOGLE_SCRIPT_SECRET`: copy the complete value from **Launch Setup!B2** (the same Sheet used in step 1). Select *secret* when possible.
+
+Apply the changes and **trigger a fresh production deploy**; Netlify functions receive the environment variables only when deployed with them. Never commit either environment value to public GitHub. Our connected Netlify API currently returns `403` on environment-variable writes, so this one configuration step must be performed in your dashboard.
+
+### 4. Test before participant rollout
+Make one fake test response with nonidentifying dummy data; check that the site displays **Thank you** with a submission reference, and that one row was added to the **Responses** tab of the private Google Sheet. Delete the test row afterwards. Confirm English, Sinhala and Tamil rendering and review translations with native speakers before formal data collection.
+
+## Netlify deployment notes
+Use the **existing Netlify project**, not a new one. The site was created without a visitor password. It still requires a GitHub source connection and an initial published deploy. Do not publish respondent data in GitHub or enable public Google Sheet sharing.
 
 ## Research questionnaire fidelity and data conventions
 - All **five sections (A–E)** and the source answer options are retained. Section B has **nine purchase items**, Section C has **eleven consumption items**.
