@@ -1,6 +1,8 @@
 /** Sugar Smart Workplace Study — Google Apps Script backend.
  * Deploy as Web App: Execute as Me, Who has access: Anyone.
- * Set Script Properties SHEET_ID and GOOGLE_SCRIPT_SECRET before deploying.
+ * Open from Google Sheet: Extensions > Apps Script. Run setupHeaders() once.
+ * setupHeaders() securely stores the spreadsheet ID and backend token as Script Properties.
+ * The token is read from cell B2 of the owner's private Launch Setup sheet.
  * The public website NEVER exposes the shared secret. Review Google Sheet sharing separately.
  */
 const FOODS_B=['tea','soft','fruit','energy','biscuits','cakes','chocolate','yogurt','ice'];
@@ -37,4 +39,14 @@ function doPost(e){
   }finally{lock.releaseLock()}
  }catch(e){console.error('Submission error',String(e));return json_({ok:false,error:'Storage error'})}
 }
-function setupHeaders(){getSheet_();}
+function setupHeaders(){
+ const ss=SpreadsheetApp.getActiveSpreadsheet();
+ if(!ss)throw Error('Open this script from Google Sheets > Extensions > Apps Script.');
+ const config=ss.getSheetByName('Launch Setup');
+ if(!config)throw Error('Launch Setup tab is missing from the response spreadsheet.');
+ const secret=String(config.getRange('B2').getDisplayValue()).trim();
+ if(secret.length<32)throw Error('Backend token in Launch Setup!B2 is missing or too short.');
+ PropertiesService.getScriptProperties().setProperties({SHEET_ID:ss.getId(),GOOGLE_SCRIPT_SECRET:secret});
+ getSheet_();
+ console.log('Sugar Smart backend setup complete. You can deploy the Web App.');
+}
